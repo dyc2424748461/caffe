@@ -15,6 +15,7 @@ public:
     
     // Version check utilities
     bool IsVersion900OrHigher() const;
+    bool IsVersion960OrHigher() const;
     std::string GetVersionString() const;
 
     // Error handling

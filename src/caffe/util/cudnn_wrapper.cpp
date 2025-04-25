@@ -28,6 +28,10 @@ bool CuDNNWrapper::IsVersion900OrHigher() const {
     return CUDNN_VERSION >= 9000;
 }
 
+bool CuDNNWrapper::IsVersion960OrHigher() const {
+    return CUDNN_VERSION >= 9600;
+}
+
 std::string CuDNNWrapper::GetVersionString() const {
     int version = CUDNN_VERSION;
     std::stringstream ss;

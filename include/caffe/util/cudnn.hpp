@@ -58,6 +58,14 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     case CUDNN_STATUS_RUNTIME_FP_OVERFLOW:
       return "CUDNN_STATUS_RUNTIME_FP_OVERFLOW";
 #endif
+#if CUDNN_VERSION_MIN(9, 6, 0)
+    case CUDNN_STATUS_NOT_PERMITTED:
+      return "CUDNN_STATUS_NOT_PERMITTED";
+    case CUDNN_STATUS_INSUFFICIENT_DRIVER:
+      return "CUDNN_STATUS_INSUFFICIENT_DRIVER";
+    case CUDNN_STATUS_GRAPH_EXEC_ERROR:
+      return "CUDNN_STATUS_GRAPH_EXEC_ERROR";
+#endif
   }
   return "Unknown cudnn status";
 }

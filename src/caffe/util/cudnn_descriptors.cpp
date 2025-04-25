@@ -45,8 +45,12 @@ CuDNNFilterDescriptor::~CuDNNFilterDescriptor() {
 void CuDNNFilterDescriptor::Set4D(int n, int c, int h, int w, 
                                  cudnnDataType_t dtype,
                                  cudnnTensorFormat_t format) {
-#if CUDNN_VERSION_MIN(9, 0, 0)
-    // Use newer API for cuDNN 9.0.0 and above
+#if CUDNN_VERSION_MIN(9, 6, 0)
+    // Use newer API for cuDNN 9.6.0 and above
+    CUDNN_CHECK(cudnnSetFilter4dDescriptor(descriptor_,
+        dtype, format, n, c, h, w));
+#elif CUDNN_VERSION_MIN(9, 0, 0)
+    // Use API for cuDNN 9.0.0 to 9.5.x
     CUDNN_CHECK(cudnnSetFilter4dDescriptor_v4(descriptor_,
         dtype, format, n, c, h, w));
 #else
@@ -74,8 +78,13 @@ void CuDNNConvolutionDescriptor::SetConv2D(
     cudnnConvolutionMode_t mode,
     cudnnDataType_t compute_type) {
     
-#if CUDNN_VERSION_MIN(9, 0, 0)
-    // Use newer API with compute precision for cuDNN 9.0.0
+#if CUDNN_VERSION_MIN(9, 6, 0)
+    // Use newer API with compute precision for cuDNN 9.6.0
+    CUDNN_CHECK(cudnnSetConvolution2dDescriptor(descriptor_,
+        pad_h, pad_w, stride_h, stride_w,
+        dilation_h, dilation_w, mode, compute_type));
+#elif CUDNN_VERSION_MIN(9, 0, 0)
+    // Use API for cuDNN 9.0.0 to 9.5.x
     CUDNN_CHECK(cudnnSetConvolution2dDescriptor(descriptor_,
         pad_h, pad_w, stride_h, stride_w,
         dilation_h, dilation_w, mode, compute_type));
@@ -92,5 +101,11 @@ void CuDNNConvolutionDescriptor::SetMathType(cudnnMathType_t math_type) {
     CUDNN_CHECK(cudnnSetConvolutionMathType(descriptor_, math_type));
 #endif
 }
+
+#if CUDNN_VERSION_MIN(9, 6, 0)
+void CuDNNConvolutionDescriptor::SetReorderType(cudnnReorderType_t reorder_type) {
+    CUDNN_CHECK(cudnnSetConvolutionReorderType(descriptor_, reorder_type));
+}
+#endif
 
 }  // namespace caffe

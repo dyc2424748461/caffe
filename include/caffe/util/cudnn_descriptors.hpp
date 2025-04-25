@@ -49,6 +49,9 @@ public:
                    cudnnConvolutionMode_t mode = CUDNN_CROSS_CORRELATION,
                    cudnnDataType_t compute_type = CUDNN_DATA_FLOAT);
     void SetMathType(cudnnMathType_t math_type);
+#if CUDNN_VERSION_MIN(9, 6, 0)
+    void SetReorderType(cudnnReorderType_t reorder_type);
+#endif
     cudnnConvolutionDescriptor_t Get() const { return descriptor_; }
 
 private:
