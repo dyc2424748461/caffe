@@ -7,6 +7,13 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 
+// 确保这个宏在文件开头的 include 之后、其他代码之前
+#ifndef CUDNN_VERSION_MIN
+#define CUDNN_VERSION_MIN(major, minor, patch) \
+    (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
+#endif
+
+
 #define CUDNN_VERSION_MIN(major, minor, patch) \
     (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
 
