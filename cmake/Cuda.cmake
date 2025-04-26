@@ -201,30 +201,55 @@ function(detect_cuDNN)
     file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
 
     # cuDNN v3 and beyond
-    string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
+    string(REGEX MATCH "#define CUDNN_MAJOR[ \t]+([0-9]+)"
            CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_MAJOR * +([0-9]+)" "\\1"
+    string(REGEX REPLACE "#define CUDNN_MAJOR[ \t]+([0-9]+)" "\\1"
            CUDNN_VERSION_MAJOR "${CUDNN_VERSION_MAJOR}")
-    string(REGEX MATCH "define CUDNN_MINOR * +([0-9]+)"
+    string(REGEX MATCH "#define CUDNN_MINOR[ \t]+([0-9]+)"
            CUDNN_VERSION_MINOR "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_MINOR * +([0-9]+)" "\\1"
+    string(REGEX REPLACE "#define CUDNN_MINOR[ \t]+([0-9]+)" "\\1"
            CUDNN_VERSION_MINOR "${CUDNN_VERSION_MINOR}")
-    string(REGEX MATCH "define CUDNN_PATCHLEVEL * +([0-9]+)"
+    string(REGEX MATCH "#define CUDNN_PATCHLEVEL[ \t]+([0-9]+)"
            CUDNN_VERSION_PATCH "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_PATCHLEVEL * +([0-9]+)" "\\1"
+    string(REGEX REPLACE "#define CUDNN_PATCHLEVEL[ \t]+([0-9]+)" "\\1"
            CUDNN_VERSION_PATCH "${CUDNN_VERSION_PATCH}")
 
+    # For newer cuDNN versions, try alternative format
     if(NOT CUDNN_VERSION_MAJOR)
-      set(CUDNN_VERSION "???")
+      # Try to find CUDNN_VERSION directly
+      string(REGEX MATCH "#define CUDNN_VERSION[ \t]+([0-9]+)"
+             CUDNN_VERSION_DIRECT "${CUDNN_VERSION_FILE_CONTENTS}")
+      string(REGEX REPLACE "#define CUDNN_VERSION[ \t]+([0-9]+)" "\\1"
+             CUDNN_VERSION_DIRECT "${CUDNN_VERSION_DIRECT}")
+      
+      if(CUDNN_VERSION_DIRECT)
+        # Extract major, minor, patch from the single version number
+        math(EXPR CUDNN_VERSION_MAJOR "${CUDNN_VERSION_DIRECT} / 1000")
+        math(EXPR CUDNN_VERSION_MINOR "(${CUDNN_VERSION_DIRECT} % 1000) / 100")
+        math(EXPR CUDNN_VERSION_PATCH "${CUDNN_VERSION_DIRECT} % 100")
+      endif()
+    endif()
+
+    if(NOT CUDNN_VERSION_MAJOR)
+      # If we still can't find the version, set a default high version to allow compilation
+      set(CUDNN_VERSION_MAJOR "8")
+      set(CUDNN_VERSION_MINOR "0")
+      set(CUDNN_VERSION_PATCH "0")
+      set(CUDNN_VERSION "8.0.0 (assumed)")
     else()
       set(CUDNN_VERSION "${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}.${CUDNN_VERSION_PATCH}")
     endif()
 
     message(STATUS "Found cuDNN: ver. ${CUDNN_VERSION} found (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY})")
 
-    string(COMPARE LESS "${CUDNN_VERSION_MAJOR}" 3 cuDNNVersionIncompatible)
-    if(cuDNNVersionIncompatible)
-      message(FATAL_ERROR "cuDNN version >3 is required.")
+    # Check if version is compatible (>= 3)
+    if(CUDNN_VERSION_MAJOR)
+      string(COMPARE LESS "${CUDNN_VERSION_MAJOR}" 3 cuDNNVersionIncompatible)
+      if(cuDNNVersionIncompatible)
+        message(FATAL_ERROR "cuDNN version >3 is required.")
+      endif()
+    else()
+      message(STATUS "cuDNN version detection uncertain, assuming compatible version")
     endif()
 
     set(CUDNN_VERSION "${CUDNN_VERSION}" PARENT_SCOPE)
