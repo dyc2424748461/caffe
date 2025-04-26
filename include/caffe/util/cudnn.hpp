@@ -7,15 +7,11 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 
-// 确保这个宏在文件开头的 include 之后、其他代码之前
+// Define CUDNN version check macro
 #ifndef CUDNN_VERSION_MIN
 #define CUDNN_VERSION_MIN(major, minor, patch) \
     (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
 #endif
-
-
-#define CUDNN_VERSION_MIN(major, minor, patch) \
-    (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
 
 #define CUDNN_CHECK(condition) \
   do { \
@@ -58,7 +54,7 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     case CUDNN_STATUS_RUNTIME_FP_OVERFLOW:
       return "CUDNN_STATUS_RUNTIME_FP_OVERFLOW";
 #endif
-#if CUDNN_VERSION_MIN(9, 6, 0)
+#if defined(CUDNN_STATUS_NOT_PERMITTED) && defined(CUDNN_STATUS_INSUFFICIENT_DRIVER) && defined(CUDNN_STATUS_GRAPH_EXEC_ERROR)
     case CUDNN_STATUS_NOT_PERMITTED:
       return "CUDNN_STATUS_NOT_PERMITTED";
     case CUDNN_STATUS_INSUFFICIENT_DRIVER:
