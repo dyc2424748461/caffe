@@ -1,3 +1,4 @@
+/*
 #define CUDA_VERSION_AT_LEAST(major, minor) \
   (CUDA_VERSION >= ((major) * 1000 + (minor) * 10))
 
@@ -6,10 +7,10 @@
 #else
     #include "math_functions.h"
 #endif
-
-/*
-#include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
 */
+
+#include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
+
 
 #include <thrust/device_vector.h>
 #include <thrust/functional.h>  // thrust::plus
