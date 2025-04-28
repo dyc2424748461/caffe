@@ -13,6 +13,19 @@ project(Caffe LANGUAGES CXX CUDA)
 enable_language(CUDA)
 
 find_package(CUDAToolkit REQUIRED)
+
+# get the cuda version
+if(DEFINED cuda_version)
+    set(CUDA_VERSION_INTERNAL "${cuda_version}")
+    message(STATUS "Detected old CUDA version variable: ${cuda_version}")
+elseif(DEFINED CUDAToolkit_VERSION)
+    set(CUDA_VERSION_INTERNAL "${CUDAToolkit_VERSION}")
+    message(STATUS "Detected new CUDA version variable: ${CUDAToolkit_VERSION}")
+else()
+    message(FATAL_ERROR "Neither cuda_version nor CUDAToolkit_VERSION is defined. Cannot determine CUDA version.")
+endif()
+
+
 include_directories(${CUDAToolkit_INCLUDE_DIRS})
 set(CMAKE_CUDA_ARCHITECTURES 60 70 75 80 86)
 

@@ -243,7 +243,7 @@ list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${CUDAToolkit_INCLUDE_DIRS})
 list(APPEND Caffe_LINKER_LIBS PUBLIC CUDA::cudart CUDA::curand CUDA::cublas)
 
 set(HAVE_CUDA TRUE)
-message(STATUS "CUDA detected: " ${CUDA_VERSION})
+message(STATUS "CUDA detected: " ${CUDA_VERSION_INTERNAL})
 list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${CUDA_INCLUDE_DIRS})
 list(APPEND Caffe_LINKER_LIBS PUBLIC ${CUDA_CUDART_LIBRARY}
                                      ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
