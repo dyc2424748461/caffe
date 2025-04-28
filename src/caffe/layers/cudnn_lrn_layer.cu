@@ -16,7 +16,7 @@ void CuDNNLRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
         cudnn::dataType<Dtype>::one,
         bottom_desc_, bottom_data,
         cudnn::dataType<Dtype>::zero,
-        top_desc_, top_data) );
+        top_desc_, top_data));
 }
 
 template <typename Dtype>
@@ -34,11 +34,10 @@ void CuDNNLRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
         top_desc_, top_diff,
         bottom_desc_, bottom_data,
         cudnn::dataType<Dtype>::zero,
-        bottom_desc_, bottom_diff) );
+        bottom_desc_, bottom_diff));
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(CuDNNLRNLayer);
 
-};  // namespace caffe
-
+}  // namespace caffe
 #endif

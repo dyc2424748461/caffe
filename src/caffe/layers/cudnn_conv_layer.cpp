@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <boost/make_shared.hpp>
 #include "caffe/layers/cudnn_conv_layer.hpp"
 
 namespace caffe {
@@ -17,9 +18,9 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
 
   // Initialize descriptors for each bottom blob
   for (int i = 0; i < bottom.size(); i++) {
-    bottom_descs_.push_back(make_shared<CuDNNTensorDescriptor>());
-    top_descs_.push_back(make_shared<CuDNNTensorDescriptor>());
-    conv_descs_.push_back(make_shared<CuDNNConvolutionDescriptor>());
+    bottom_descs_.push_back(boost::make_shared<CuDNNTensorDescriptor>());
+    top_descs_.push_back(boost::make_shared<CuDNNTensorDescriptor>());
+    conv_descs_.push_back(boost::make_shared<CuDNNConvolutionDescriptor>());
   }
 
   // Initialize filter descriptor

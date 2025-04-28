@@ -1,41 +1,35 @@
-// include/caffe/util/cudnn_wrapper.hpp
-#ifndef CAFFE_CUDNN_WRAPPER_HPP_
-#define CAFFE_CUDNN_WRAPPER_HPP_
+#ifndef CAFFE_UTIL_CUDNN_WRAPPER_HPP_
+#define CAFFE_UTIL_CUDNN_WRAPPER_HPP_
+
+#ifdef USE_CUDNN
 
 #include <cudnn.h>
 #include <memory>
-#include <string>
+#include "caffe/common.hpp"
+#include "caffe/util/cudnn.hpp"
 
 namespace caffe {
 
-class CuDNNWrapper {
-public:
-    static CuDNNWrapper& GetInstance();
-    cudnnHandle_t GetHandle() const;
-    
-    // Version check utilities
-    bool IsVersion900OrHigher() const;
-    bool IsVersion960OrHigher() const;
-    std::string GetVersionString() const;
+// cuDNN handle wrapper
+class CuDNNHandle {
+ public:
+  CuDNNHandle() {
+    CUDNN_CHECK(cudnnCreate(&handle_));
+  }
 
-    // Error handling
-    static void CheckError(cudnnStatus_t status, const char* file, int line);
+  ~CuDNNHandle() {
+    CUDNN_CHECK(cudnnDestroy(handle_));
+  }
 
-private:
-    CuDNNWrapper();
-    ~CuDNNWrapper();
-    
-    // Prevent copying
-    CuDNNWrapper(const CuDNNWrapper&) = delete;
-    CuDNNWrapper& operator=(const CuDNNWrapper&) = delete;
+  cudnnHandle_t Get() const {
+    return handle_;
+  }
 
-    cudnnHandle_t handle_;
+ private:
+  cudnnHandle_t handle_;
 };
 
-// Macro for error checking
-#define CUDNN_CHECK(condition) \
-    CuDNNWrapper::CheckError((condition), __FILE__, __LINE__)
+}  // namespace caffe
 
-} // namespace caffe
-
-#endif // CAFFE_CUDNN_WRAPPER_HPP_
+#endif  // USE_CUDNN
+#endif  // CAFFE_UTIL_CUDNN_WRAPPER_HPP_
