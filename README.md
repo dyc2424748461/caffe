@@ -9,6 +9,28 @@
 
 Can be run in Google Colab [caffe2cudnn9.ipynb](./caffe2cudnn9.ipynb) 
 
+## What was done?
+Replace the api in the caffe file with the api of cudnn9.6.0, and it can run after testing
+
+All the necessary CUDA implementation files (.cu files) of the cuDNN layer have been created:
+
+cudnn_lrn_layer.cu
+cudnn_pooling_layer.cu
+cudnn_relu_layer.cu
+cudnn_sigmoid_layer.cu
+cudnn_softmax_layer.cu
+cudnn_tanh_layer.cu
+cudnn_deconv_layer.cu
+The synchronization function was added in cudnn_deconv_layer.cu:
+
+```
+// CUDA kernels for synchronization
+__global__ void sync_deconv_groups() { }
+```
+The Forward_gpu and Backward_gpu methods of all cuDNN layers have been implemented to make them compatible with the cuDNN 9.6.0 API.
+
+The Caffe library was successfully compiled and verified to be indeed linked to libcudnn.so.9.
+
 # Caffe
 
 [![Build Status](https://travis-ci.org/BVLC/caffe.svg?branch=master)](https://travis-ci.org/BVLC/caffe)
