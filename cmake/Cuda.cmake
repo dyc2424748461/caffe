@@ -13,7 +13,6 @@ set(Caffe_known_gpu_archs "20 21(20) 30 35 50 60 61")
 function(caffe_detect_installed_gpus out_variable)
   if(NOT CUDA_gpu_detect_output)
     set(__cufile ${PROJECT_BINARY_DIR}/detect_cuda_archs.cu)
-
     file(WRITE ${__cufile} ""
       "#include <cstdio>\n"
       "int main()\n"
@@ -25,22 +24,18 @@ function(caffe_detect_installed_gpus out_variable)
       "  {\n"
       "    cudaDeviceProp prop;\n"
       "    if (cudaSuccess == cudaGetDeviceProperties(&prop, device))\n"
-      "      std::printf(\"%d.%d \", prop.major, prop.minor);\n"
+      "      std::printf(\"%d%d \", prop.major, prop.minor);\n"
       "  }\n"
       "  return 0;\n"
       "}\n")
-
-    execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}" "--run" "${__cufile}"
+    execute_process(COMMAND "${CUDAToolkit_NVCC_EXECUTABLE}" "--run" "${__cufile}"
                     WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
                     RESULT_VARIABLE __nvcc_res OUTPUT_VARIABLE __nvcc_out
                     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-
     if(__nvcc_res EQUAL 0)
-      string(REPLACE "2.1" "2.1(2.0)" __nvcc_out "${__nvcc_out}")
-      set(CUDA_gpu_detect_output ${__nvcc_out} CACHE INTERNAL "Returned GPU architetures from caffe_detect_gpus tool" FORCE)
+      set(CUDA_gpu_detect_output ${__nvcc_out} CACHE INTERNAL "Returned GPU architectures" FORCE)
     endif()
   endif()
-
   if(NOT CUDA_gpu_detect_output)
     message(STATUS "Automatic GPU detection failed. Building for all known architectures.")
     set(${out_variable} ${Caffe_known_gpu_archs} PARENT_SCOPE)
@@ -49,93 +44,105 @@ function(caffe_detect_installed_gpus out_variable)
   endif()
 endfunction()
 
+# Select NVCC arch flags
+function(caffe_select_nvcc_arch_flags out_variable)
+  set(__archs_names "Pascal" "Volta" "Turing" "Ampere" "All" "Manual" "Auto")
+  set(__archs_name_default "Auto")
+  set(CUDA_ARCH_NAME ${__archs_name_default} CACHE STRING "Select target NVIDIA GPU architecture.")
+  set_property(CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${__archs_names})
+  mark_as_advanced(CUDA_ARCH_NAME)
+  if(${CUDA_ARCH_NAME} STREQUAL "Manual")
+    set(CUDA_ARCH_BIN "60 70 75 80 86" CACHE STRING "Specify GPU architectures")
+    set(CUDA_ARCH_PTX "75" CACHE STRING "Specify PTX architectures")
+    mark_as_advanced(CUDA_ARCH_BIN CUDA_ARCH_PTX)
+  else()
+    unset(CUDA_ARCH_BIN CACHE)
+    unset(CUDA_ARCH_PTX CACHE)
+  endif()
+  if(${CUDA_ARCH_NAME} STREQUAL "Pascal")
+    set(__cuda_arch_bin "60 61")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
+    set(__cuda_arch_bin "70")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    set(__cuda_arch_bin "75")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
+    set(__cuda_arch_bin "80 86")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "All")
+    set(__cuda_arch_bin ${Caffe_known_gpu_archs})
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
+    caffe_detect_installed_gpus(__cuda_arch_bin)
+  else()
+    set(__cuda_arch_bin ${CUDA_ARCH_BIN})
+  endif()
+  string(REGEX REPLACE "\\." "" __cuda_arch_bin "${__cuda_arch_bin}")
+  string(REGEX REPLACE "\\." "" __cuda_arch_ptx "${CUDA_ARCH_PTX}")
+  string(REGEX MATCHALL "[0-9]+" __cuda_arch_bin "${__cuda_arch_bin}")
+  string(REGEX MATCHALL "[0-9]+" __cuda_arch_ptx "${__cuda_arch_ptx}")
+  set(__nvcc_flags "")
+  set(__nvcc_archs_readable "")
+  foreach(__arch ${__cuda_arch_bin})
+    list(APPEND __nvcc_flags -gencode arch=compute_${__arch},code=sm_${__arch})
+    list(APPEND __nvcc_archs_readable sm_${__arch})
+  endforeach()
+  foreach(__arch ${__cuda_arch_ptx})
+    list(APPEND __nvcc_flags -gencode arch=compute_${__arch},code=compute_${__arch})
+    list(APPEND __nvcc_archs_readable compute_${__arch})
+  endforeach()
+  string(REPLACE ";" " " __nvcc_archs_readable "${__nvcc_archs_readable}")
+  set(${out_variable} ${__nvcc_flags} PARENT_SCOPE)
+  set(${out_variable}_readable ${__nvcc_archs_readable} PARENT_SCOPE)
+endfunction()
+
 
 ################################################################################################
 # Function for selecting GPU arch flags for nvcc based on CUDA_ARCH_NAME
 # Usage:
 #   caffe_select_nvcc_arch_flags(out_variable)
 function(caffe_select_nvcc_arch_flags out_variable)
-  # List of arch names
-  set(__archs_names "Fermi" "Kepler" "Maxwell" "Pascal" "All" "Manual")
-  set(__archs_name_default "All")
-  if(NOT CMAKE_CROSSCOMPILING)
-    list(APPEND __archs_names "Auto")
-    set(__archs_name_default "Auto")
-  endif()
-
-  # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
-  set(CUDA_ARCH_NAME ${__archs_name_default} CACHE STRING "Select target NVIDIA GPU achitecture.")
-  set_property( CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${__archs_names} )
+  set(__archs_names "Pascal" "Volta" "Turing" "Ampere" "All" "Manual" "Auto")
+  set(__archs_name_default "Auto")
+  set(CUDA_ARCH_NAME ${__archs_name_default} CACHE STRING "Select target NVIDIA GPU architecture.")
+  set_property(CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${__archs_names})
   mark_as_advanced(CUDA_ARCH_NAME)
-
-  # verify CUDA_ARCH_NAME value
-  if(NOT ";${__archs_names};" MATCHES ";${CUDA_ARCH_NAME};")
-    string(REPLACE ";" ", " __archs_names "${__archs_names}")
-    message(FATAL_ERROR "Only ${__archs_names} architeture names are supported.")
-  endif()
-
   if(${CUDA_ARCH_NAME} STREQUAL "Manual")
-    set(CUDA_ARCH_BIN ${Caffe_known_gpu_archs} CACHE STRING "Specify 'real' GPU architectures to build binaries for, BIN(PTX) format is supported")
-    set(CUDA_ARCH_PTX "50"                     CACHE STRING "Specify 'virtual' PTX architectures to build PTX intermediate code for")
+    set(CUDA_ARCH_BIN "60 70 75 80 86" CACHE STRING "Specify GPU architectures")
+    set(CUDA_ARCH_PTX "75" CACHE STRING "Specify PTX architectures")
     mark_as_advanced(CUDA_ARCH_BIN CUDA_ARCH_PTX)
   else()
     unset(CUDA_ARCH_BIN CACHE)
     unset(CUDA_ARCH_PTX CACHE)
   endif()
-
-  if(${CUDA_ARCH_NAME} STREQUAL "Fermi")
-    set(__cuda_arch_bin "20 21(20)")
-  elseif(${CUDA_ARCH_NAME} STREQUAL "Kepler")
-    set(__cuda_arch_bin "30 35")
-  elseif(${CUDA_ARCH_NAME} STREQUAL "Maxwell")
-    set(__cuda_arch_bin "50")
-  elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
+  if(${CUDA_ARCH_NAME} STREQUAL "Pascal")
     set(__cuda_arch_bin "60 61")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
+    set(__cuda_arch_bin "70")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    set(__cuda_arch_bin "75")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
+    set(__cuda_arch_bin "80 86")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(__cuda_arch_bin ${Caffe_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
     caffe_detect_installed_gpus(__cuda_arch_bin)
-  else()  # (${CUDA_ARCH_NAME} STREQUAL "Manual")
+  else()
     set(__cuda_arch_bin ${CUDA_ARCH_BIN})
   endif()
-
-  # remove dots and convert to lists
   string(REGEX REPLACE "\\." "" __cuda_arch_bin "${__cuda_arch_bin}")
   string(REGEX REPLACE "\\." "" __cuda_arch_ptx "${CUDA_ARCH_PTX}")
-  string(REGEX MATCHALL "[0-9()]+" __cuda_arch_bin "${__cuda_arch_bin}")
-  string(REGEX MATCHALL "[0-9]+"   __cuda_arch_ptx "${__cuda_arch_ptx}")
-  caffe_list_unique(__cuda_arch_bin __cuda_arch_ptx)
-
+  string(REGEX MATCHALL "[0-9]+" __cuda_arch_bin "${__cuda_arch_bin}")
+  string(REGEX MATCHALL "[0-9]+" __cuda_arch_ptx "${__cuda_arch_ptx}")
   set(__nvcc_flags "")
   set(__nvcc_archs_readable "")
-
-  string(COMPARE LESS "${CUDA_VERSION}" "9.0" iscudaolderthan90)
-  if(NOT iscudaolderthan90)
-    string(REPLACE "21(20)" "" __cuda_arch_bin "${__cuda_arch_bin}")
-    string(REPLACE "20" "" __cuda_arch_bin "${__cuda_arch_bin}")
-  endif()
-
-  # Tell NVCC to add binaries for the specified GPUs
   foreach(__arch ${__cuda_arch_bin})
-    if(__arch MATCHES "([0-9]+)\\(([0-9]+)\\)")
-      # User explicitly specified PTX for the concrete BIN
-      list(APPEND __nvcc_flags -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1})
-      list(APPEND __nvcc_archs_readable sm_${CMAKE_MATCH_1})
-    else()
-      # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
-      list(APPEND __nvcc_flags -gencode arch=compute_${__arch},code=sm_${__arch})
-      list(APPEND __nvcc_archs_readable sm_${__arch})
-    endif()
+    list(APPEND __nvcc_flags -gencode arch=compute_${__arch},code=sm_${__arch})
+    list(APPEND __nvcc_archs_readable sm_${__arch})
   endforeach()
-
-  # Tell NVCC to add PTX intermediate code for the specified architectures
   foreach(__arch ${__cuda_arch_ptx})
     list(APPEND __nvcc_flags -gencode arch=compute_${__arch},code=compute_${__arch})
     list(APPEND __nvcc_archs_readable compute_${__arch})
   endforeach()
-
   string(REPLACE ";" " " __nvcc_archs_readable "${__nvcc_archs_readable}")
-  set(${out_variable}          ${__nvcc_flags}          PARENT_SCOPE)
+  set(${out_variable} ${__nvcc_flags} PARENT_SCOPE)
   set(${out_variable}_readable ${__nvcc_archs_readable} PARENT_SCOPE)
 endfunction()
 
@@ -160,7 +167,15 @@ macro(caffe_cuda_compile objlist_variable)
     list(APPEND CUDA_NVCC_FLAGS -Xcompiler -Wno-unused-function)
   endif()
 
-  cuda_compile(cuda_objcs ${ARGN})
+function(caffe_cuda_compile out_var)
+  set(cuda_files ${ARGN})
+  foreach(file ${cuda_files})
+    if(${file} MATCHES "\\.cu$")
+      set_source_files_properties(${file} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ)
+    endif()
+  endforeach()
+  set(${out_var} ${cuda_files} PARENT_SCOPE)
+endfunction()
 
   foreach(var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_DEBUG)
     set(${var} "${${var}_backup_in_cuda_compile_}")
@@ -177,72 +192,55 @@ endmacro()
 #   detect_cuDNN()
 function(detect_cuDNN)
   set(CUDNN_ROOT "" CACHE PATH "CUDNN root folder")
-
   find_path(CUDNN_INCLUDE cudnn.h
-            PATHS ${CUDNN_ROOT} $ENV{CUDNN_ROOT} ${CUDA_TOOLKIT_INCLUDE}
-            DOC "Path to cuDNN include directory." )
-
-  # dynamic libs have different suffix in mac and linux
+            PATHS ${CUDNN_ROOT} $ENV{CUDNN_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}/include /usr/include
+            DOC "Path to cuDNN include directory.")
   if(APPLE)
     set(CUDNN_LIB_NAME "libcudnn.dylib")
   else()
     set(CUDNN_LIB_NAME "libcudnn.so")
   endif()
-
-  get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
   find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME}
-   PATHS ${CUDNN_ROOT} $ENV{CUDNN_ROOT} ${CUDNN_INCLUDE} ${__libpath_hist} ${__libpath_hist}/../lib
-   DOC "Path to cuDNN library.")
-  
+               PATHS ${CUDNN_ROOT} /usr/local/cuda-12.5/lib64 /usr/lib/x86_64-linux-gnu
+               DOC "Path to cuDNN library.")
   if(CUDNN_INCLUDE AND CUDNN_LIBRARY)
-    set(HAVE_CUDNN  TRUE PARENT_SCOPE)
+    set(HAVE_CUDNN TRUE PARENT_SCOPE)
     set(CUDNN_FOUND TRUE PARENT_SCOPE)
-
-    file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
-
-    # cuDNN v3 and beyond
-    string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
-           CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_MAJOR * +([0-9]+)" "\\1"
-           CUDNN_VERSION_MAJOR "${CUDNN_VERSION_MAJOR}")
-    string(REGEX MATCH "define CUDNN_MINOR * +([0-9]+)"
-           CUDNN_VERSION_MINOR "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_MINOR * +([0-9]+)" "\\1"
-           CUDNN_VERSION_MINOR "${CUDNN_VERSION_MINOR}")
-    string(REGEX MATCH "define CUDNN_PATCHLEVEL * +([0-9]+)"
-           CUDNN_VERSION_PATCH "${CUDNN_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define CUDNN_PATCHLEVEL * +([0-9]+)" "\\1"
-           CUDNN_VERSION_PATCH "${CUDNN_VERSION_PATCH}")
-
-    if(NOT CUDNN_VERSION_MAJOR)
-      set(CUDNN_VERSION "???")
+    # 查找 cudnn_version.h
+    find_file(CUDNN_VERSION_FILE cudnn_version.h
+              PATHS ${CUDNN_INCLUDE}
+              DOC "Path to cudnn_version.h")
+    if(CUDNN_VERSION_FILE)
+      file(READ ${CUDNN_VERSION_FILE} CUDNN_VERSION_FILE_CONTENTS)
+      string(REGEX MATCH "#define CUDNN_MAJOR[ \t]+([0-9]+)" CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")
+      string(REGEX REPLACE "#define CUDNN_MAJOR[ \t]+([0-9]+)" "\\1" CUDNN_VERSION_MAJOR "${CUDNN_VERSION_MAJOR}")
+      string(REGEX MATCH "#define CUDNN_MINOR[ \t]+([0-9]+)" CUDNN_VERSION_MINOR "${CUDNN_VERSION_FILE_CONTENTS}")
+      string(REGEX REPLACE "#define CUDNN_MINOR[ \t]+([0-9]+)" "\\1" CUDNN_VERSION_MINOR "${CUDNN_VERSION_MINOR}")
+      string(REGEX MATCH "#define CUDNN_PATCHLEVEL[ \t]+([0-9]+)" CUDNN_VERSION_PATCH "${CUDNN_VERSION_FILE_CONTENTS}")
+      string(REGEX REPLACE "#define CUDNN_PATCHLEVEL[ \t]+([0-9]+)" "\\1" CUDNN_VERSION_PATCH "${CUDNN_VERSION_PATCH}")
+      if(CUDNN_VERSION_MAJOR)
+        set(CUDNN_VERSION "${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}.${CUDNN_VERSION_PATCH}" PARENT_SCOPE)
+      else()
+        set(CUDNN_VERSION "unknown" PARENT_SCOPE)
+      endif()
+      message(STATUS "Found cuDNN: ver. ${CUDNN_VERSION} found (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY})")
     else()
-      set(CUDNN_VERSION "${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}.${CUDNN_VERSION_PATCH}")
+      message(STATUS "Found cuDNN, but cudnn_version.h not found, version unknown (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY})")
     endif()
-
-    message(STATUS "Found cuDNN: ver. ${CUDNN_VERSION} found (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY})")
-
-    string(COMPARE LESS "${CUDNN_VERSION_MAJOR}" 3 cuDNNVersionIncompatible)
-    if(cuDNNVersionIncompatible)
-      message(FATAL_ERROR "cuDNN version >3 is required.")
-    endif()
-
-    set(CUDNN_VERSION "${CUDNN_VERSION}" PARENT_SCOPE)
-    mark_as_advanced(CUDNN_INCLUDE CUDNN_LIBRARY CUDNN_ROOT)
-
+  else()
+    message(STATUS "cuDNN not found")
   endif()
+  mark_as_advanced(CUDNN_INCLUDE CUDNN_LIBRARY CUDNN_ROOT CUDNN_VERSION_FILE)
 endfunction()
+
 
 ################################################################################################
 ###  Non macro section
 ################################################################################################
 
-find_package(CUDA 5.5 QUIET)
-find_cuda_helper_libs(curand)  # cmake 2.8.7 compatibility which doesn't search for curand
-
-if(NOT CUDA_FOUND)
-  return()
-endif()
+find_package(CUDAToolkit REQUIRED)
+list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${CUDAToolkit_INCLUDE_DIRS})
+list(APPEND Caffe_LINKER_LIBS PUBLIC CUDA::cudart CUDA::curand CUDA::cublas)
 
 set(HAVE_CUDA TRUE)
 message(STATUS "CUDA detected: " ${CUDA_VERSION})

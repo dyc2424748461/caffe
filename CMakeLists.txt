@@ -7,7 +7,14 @@ if(POLICY CMP0054)
 endif()
 
 # ---[ Caffe project
-project(Caffe C CXX)
+project(Caffe LANGUAGES CXX CUDA)
+
+# 在 CMakeLists.txt 的顶部启用 CUDA 编译
+enable_language(CUDA)
+
+find_package(CUDAToolkit REQUIRED)
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
+set(CMAKE_CUDA_ARCHITECTURES 60 70 75 80 86)
 
 # ---[ Caffe version
 set(CAFFE_TARGET_VERSION "1.0.0" CACHE STRING "Caffe logical version")
@@ -16,6 +23,9 @@ add_definitions(-DCAFFE_VERSION=${CAFFE_TARGET_VERSION})
 
 # ---[ Using cmake scripts and modules
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+
+set(USE_BUNDLED_CUB OFF)
+include_directories(/usr/local/cuda-12.5/include)
 
 include(ExternalProject)
 include(GNUInstallDirs)
@@ -44,6 +54,11 @@ caffe_option(USE_OPENMP "Link with OpenMP (when your BLAS wants OpenMP and you g
 
 # This code is taken from https://github.com/sh1r0/caffe-android-lib
 caffe_option(USE_HDF5 "Build with hdf5" ON)
+
+caffe_option(USE_CUDA_FOR_SELECTED_FILES "Compile selected source files with CUDA compiler" ON)
+
+
+
 
 # ---[ Dependencies
 include(cmake/Dependencies.cmake)
@@ -78,10 +93,10 @@ include_directories(${PROJECT_BINARY_DIR})
 #
 # list(REMOVE_ITEM ...) invocations remove PRIVATE and PUBLIC keywords from collected definitions and include pathes
 if(HAVE_CUDA)
-  # pass include pathes to cuda_include_directories()
+  # pass include paths to include_directories()
   set(Caffe_ALL_INCLUDE_DIRS ${Caffe_INCLUDE_DIRS})
   list(REMOVE_ITEM Caffe_ALL_INCLUDE_DIRS PRIVATE PUBLIC)
-  cuda_include_directories(${Caffe_INCLUDE_DIR} ${Caffe_SRC_DIR} ${Caffe_ALL_INCLUDE_DIRS})
+  include_directories(${Caffe_INCLUDE_DIR} ${Caffe_SRC_DIR} ${Caffe_ALL_INCLUDE_DIRS} ${CUDAToolkit_INCLUDE_DIRS})
 
   # add definitions to nvcc flags directly
   set(Caffe_ALL_DEFINITIONS ${Caffe_DEFINITIONS})

@@ -1,4 +1,12 @@
+#if CUDA_VERSION < 12050
+#include "math_functions.h"
+#else
+#include "cuda_runtime_api.h"
+#endif
+/*
 #include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
+*/
+
 #include <thrust/device_vector.h>
 #include <thrust/functional.h>  // thrust::plus
 #include <thrust/reduce.h>

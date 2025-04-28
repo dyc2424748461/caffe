@@ -20,6 +20,15 @@ if(HAVE_CUDA)
   list(APPEND srcs ${cuda_objs} ${cuda})
 endif()
 
+if (USE_CUDA_FOR_SELECTED_FILES)
+  message(STATUS "Setting selected source files to compile with CUDA compiler...")
+
+  set_source_files_properties(
+    ${PROJECT_SOURCE_DIR}/src/caffe/util/math_functions.cpp
+    ${PROJECT_SOURCE_DIR}/src/caffe/layers/cudnn_softmax_layer.cpp
+    PROPERTIES LANGUAGE CUDA)
+endif()
+
 add_library(caffe ${srcs})
 caffe_default_properties(caffe)
 target_link_libraries(caffe ${Caffe_LINKER_LIBS})

@@ -11,14 +11,12 @@ void CuDNNLCNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = top[0]->mutable_gpu_data();
 
-  CUDNN_CHECK(cudnnDivisiveNormalizationForward(
-        handle_, norm_desc_, CUDNN_DIVNORM_PRECOMPUTED_MEANS,
+  CUDNN_CHECK(cudnnLRNCrossChannelForward(
+        handle_, norm_desc_, CUDNN_LRN_CROSS_CHANNEL_DIM1,
         cudnn::dataType<Dtype>::one,
         bottom_desc_, bottom_data,
-        NULL,  // srcMeansData
-        this->tempData1, this->tempData2,
         cudnn::dataType<Dtype>::zero,
-        top_desc_, top_data) );
+        top_desc_, top_data));
 }
 
 template <typename Dtype>
@@ -29,15 +27,14 @@ void CuDNNLCNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
 
-  CUDNN_CHECK(cudnnDivisiveNormalizationBackward(
-        handle_, norm_desc_, CUDNN_DIVNORM_PRECOMPUTED_MEANS,
+  CUDNN_CHECK(cudnnLRNCrossChannelBackward(
+        handle_, norm_desc_, CUDNN_LRN_CROSS_CHANNEL_DIM1,
         cudnn::dataType<Dtype>::one,
+        top_desc_, top_data,
+        top_desc_, top_diff,
         bottom_desc_, bottom_data,
-        NULL, top_diff,  // NULL - srcMeansData
-        this->tempData1, this->tempData2,
         cudnn::dataType<Dtype>::zero,
-        bottom_desc_, bottom_diff,
-        NULL) );
+        bottom_desc_, bottom_diff));
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(CuDNNLCNLayer);

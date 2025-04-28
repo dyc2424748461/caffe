@@ -7,24 +7,21 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 
-// 确保这个宏在文件开头的 include 之后、其他代码之前
+// Define CUDNN version check macro
 #ifndef CUDNN_VERSION_MIN
 #define CUDNN_VERSION_MIN(major, minor, patch) \
     (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
 #endif
 
-
-#define CUDNN_VERSION_MIN(major, minor, patch) \
-    (CUDNN_VERSION >= (major * 1000 + minor * 100 + patch))
-
 #define CUDNN_CHECK(condition) \
   do { \
     cudnnStatus_t status = condition; \
     CHECK_EQ(status, CUDNN_STATUS_SUCCESS) << " "\
-      << cudnnGetErrorString(status); \
+      << caffe_cudnn_get_error_string(status); \
   } while (0)
 
-inline const char* cudnnGetErrorString(cudnnStatus_t status) {
+inline const char* caffe_cudnn_get_error_string(cudnnStatus_t status) {
+  // Return a string for all possible cudnn errors
   switch (status) {
     case CUDNN_STATUS_SUCCESS:
       return "CUDNN_STATUS_SUCCESS";
@@ -48,18 +45,9 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
       return "CUDNN_STATUS_NOT_SUPPORTED";
     case CUDNN_STATUS_LICENSE_ERROR:
       return "CUDNN_STATUS_LICENSE_ERROR";
-#if CUDNN_VERSION_MIN(6, 0, 0)
-    case CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING:
-      return "CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING";
-#endif
-#if CUDNN_VERSION_MIN(7, 0, 0)
-    case CUDNN_STATUS_RUNTIME_IN_PROGRESS:
-      return "CUDNN_STATUS_RUNTIME_IN_PROGRESS";
-    case CUDNN_STATUS_RUNTIME_FP_OVERFLOW:
-      return "CUDNN_STATUS_RUNTIME_FP_OVERFLOW";
-#endif
+    default:
+      return "UNKNOWN_CUDNN_STATUS";
   }
-  return "Unknown cudnn status";
 }
 
 namespace caffe {

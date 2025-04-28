@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <boost/make_shared.hpp>
 #include "caffe/layers/cudnn_conv_layer.hpp"
 
 namespace caffe {
@@ -17,9 +18,9 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
 
   // Initialize descriptors for each bottom blob
   for (int i = 0; i < bottom.size(); i++) {
-    bottom_descs_.push_back(make_shared<CuDNNTensorDescriptor>());
-    top_descs_.push_back(make_shared<CuDNNTensorDescriptor>());
-    conv_descs_.push_back(make_shared<CuDNNConvolutionDescriptor>());
+    bottom_descs_.push_back(boost::make_shared<CuDNNTensorDescriptor>());
+    top_descs_.push_back(boost::make_shared<CuDNNTensorDescriptor>());
+    conv_descs_.push_back(boost::make_shared<CuDNNConvolutionDescriptor>());
   }
 
   // Initialize filter descriptor
@@ -28,7 +29,14 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
   const int kernel_h = kernel_shape_data[0];
   const int kernel_w = kernel_shape_data[1];
 
-#if CUDNN_VERSION_MIN(9, 0, 0)
+#if CUDNN_VERSION_MIN(9, 6, 0)
+  filter_desc_->Set4D(
+      this->num_output_ / this->group_,
+      this->channels_ / this->group_,
+      kernel_h, kernel_w,
+      CUDNN_DATA_FLOAT,
+      CUDNN_TENSOR_NCHW);
+#elif CUDNN_VERSION_MIN(9, 0, 0)
   filter_desc_->Set4D(
       this->num_output_ / this->group_,
       this->channels_ / this->group_,
@@ -94,7 +102,18 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         this->num_output_ / this->group_,
         height_out, width_out);
 
-#if CUDNN_VERSION_MIN(9, 0, 0)
+#if CUDNN_VERSION_MIN(9, 6, 0)
+    conv_descs_[i]->SetConv2D(
+        pad_h, pad_w,
+        stride_h, stride_w,
+        1, 1,  // dilation
+        CUDNN_CROSS_CORRELATION,
+        CUDNN_DATA_FLOAT);
+    // Enable tensor cores if available
+    conv_descs_[i]->SetMathType(CUDNN_TENSOR_OP_MATH);
+    // Set reorder type for cuDNN 9.6.0
+    conv_descs_[i]->SetReorderType(CUDNN_DEFAULT_REORDER);
+#elif CUDNN_VERSION_MIN(9, 0, 0)
     conv_descs_[i]->SetConv2D(
         pad_h, pad_w,
         stride_h, stride_w,
