@@ -25,7 +25,6 @@ else()
     message(FATAL_ERROR "Neither cuda_version nor CUDAToolkit_VERSION is defined. Cannot determine CUDA version.")
 endif()
 
-
 include_directories(${CUDAToolkit_INCLUDE_DIRS})
 set(CMAKE_CUDA_ARCHITECTURES 60 70 75 80 86)
 
