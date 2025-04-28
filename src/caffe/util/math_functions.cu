@@ -1,8 +1,12 @@
-#if CUDA_VERSION < 12050
-#include "math_functions.h"
+#define CUDA_VERSION_AT_LEAST(major, minor) \
+  (CUDA_VERSION >= ((major) * 1000 + (minor) * 10))
+
+#if CUDA_VERSION_AT_LEAST(12, 5)
+    #include "cuda_runtime_api.h"
 #else
-#include "cuda_runtime_api.h"
+    #include "math_functions.h"
 #endif
+
 /*
 #include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
 */
