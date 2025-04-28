@@ -1,3 +1,14 @@
+# UPDATE
+
+
+
+| VERSION    |
+| ---------- |
+| cudnn9.2.0 |
+| cunda12.5  |
+
+Can be run in Google Colab [caffe2cudnn9.ipynb](./caffe2cudnn9.ipynb) 
+
 # Caffe
 
 [![Build Status](https://travis-ci.org/BVLC/caffe.svg?branch=master)](https://travis-ci.org/BVLC/caffe)
