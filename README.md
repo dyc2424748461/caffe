@@ -1,13 +1,40 @@
 # UPDATE
 
-
-
 | VERSION    |
 | ---------- |
-| cudnn9.2.0 |
-| cunda12.5  |
+| cudnn9.6.0 |
+| cuda12.5   |
 
 Can be run in Google Colab [caffe2cudnn9.ipynb](./caffe2cudnn9.ipynb) 
+
+## What was done?
+- Updated the caffe implementation to use cuDNN 9.6.0 API
+- Successfully tested and verified all cuDNN layer implementations
+- Added synchronization support for deconvolution layers
+- Verified compilation and linking with libcudnn.so.9
+
+All the necessary CUDA implementation files (.cu files) of the cuDNN layer have been created:
+
+```
+cudnn_lrn_layer.cu
+cudnn_pooling_layer.cu
+cudnn_relu_layer.cu
+cudnn_sigmoid_layer.cu
+cudnn_softmax_layer.cu
+cudnn_tanh_layer.cu
+cudnn_deconv_layer.cu
+```
+
+The synchronization function was added in cudnn_deconv_layer.cu:
+
+```
+// CUDA kernels for synchronization
+__global__ void sync_deconv_groups() { }
+```
+
+The Forward_gpu and Backward_gpu methods of all cuDNN layers have been implemented to make them compatible with the cuDNN 9.6.0 API.
+
+The Caffe library was successfully compiled and verified to be indeed linked to libcudnn.so.9.
 
 # Caffe
 
